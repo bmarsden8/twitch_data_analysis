@@ -63,7 +63,7 @@ top_10_games_json = CallTwitchAPI(client_id='7zilk1vqpgww0f2nwsgm5gmwhmgnar',
 InsertGamesDataToDB(json=top_10_games_json).insert_game_data(
     dbname="gaming_analytics", user="postgres")
 
-
 # Records by Kenneth Reitz
 # SQL Alchemy
 # Chron Job to run every 6 hours
+# Making an update

@@ -3,9 +3,8 @@ from datetime import datetime
 import psycopg2
 
 
-class CallTwitchAPI:
-    def __init__(self, client_id, url):
-        self.url = url
+class TwitchData:
+    def __init__(self, client_id):
         self.client_id = client_id
 
     def get_headers(self):
@@ -16,26 +15,28 @@ class CallTwitchAPI:
         # client_secret = 'wgtnu7zkeetu7x9nxi9h6efmlkgzk4'
         return headers
 
-    def get_requests_json(self):
-        response = requests.get(self.url, headers=self.get_headers())
+    def get_top_games_json(self, base_url="https://api.twitch.tv/kraken"):
+        url = base_url + '/games/top'
+        response = requests.get(url, headers=self.get_headers())
         # text_response = response.text
         return response.json()
 
-
-class InsertGamesDataToDB:
-    def __init__(self, json):
-        self.json = json
-
-    def create_ranking_list(self):
+    def create_ranking_list(self, json):
         now = datetime.now()
-        ranking = [((self.json['top'][i]['game']['name']), i + 1,
-                    (self.json['top'][i]['viewers']),
-                    (self.json['top'][i]['channels']),
+        ranking = [((json['top'][i]['game']['name']), i + 1,
+                    (json['top'][i]['viewers']),
+                    (json['top'][i]['channels']),
                     now.strftime("%m/%d/%Y %H:%M:%S")) for i in range(10)]
         return ranking
 
-    def insert_game_data(self, dbname, user):
-        conn = psycopg2.connect(dbname=dbname, user=user)
+
+class Database:
+    def __init__(self, dbname, user):
+        self.dbname = dbname
+        self.user = user
+
+    def insert_game_data(self, game_list):
+        conn = psycopg2.connect(dbname=self.dbname, user=self.user)
         cur = conn.cursor()
 
         insert_function = """
@@ -46,24 +47,31 @@ class InsertGamesDataToDB:
         for i in range(10):
             cur.execute(insert_function, (
                 {
-                    'game_name': self.create_ranking_list()[i][0],
-                    'ranking': self.create_ranking_list()[i][1],
-                    'viewers': self.create_ranking_list()[i][2],
-                    'channels': self.create_ranking_list()[i][3],
-                    'time': self.create_ranking_list()[i][4]}))
+                    'game_name': game_list[i][0],
+                    'ranking': game_list[i][1],
+                    'viewers': game_list[i][2],
+                    'channels': game_list[i][3],
+                    'time': game_list[i][4]}))
 
         conn.commit()
         cur.close()
         conn.close()
 
 
-top_10_games_json = CallTwitchAPI(client_id='7zilk1vqpgww0f2nwsgm5gmwhmgnar',
-                                  url='https://api.twitch.tv/kraken/games/top').get_requests_json()
-
-InsertGamesDataToDB(json=top_10_games_json).insert_game_data(
-    dbname="gaming_analytics", user="postgres")
+games_data = TwitchData(client_id='7zilk1vqpgww0f2nwsgm5gmwhmgnar')
+db = Database(dbname="gaming_analytics", user="postgres")
+db.insert_game_data(games_data.create_ranking_list(games_data.get_top_games_json()))
 
 # Records by Kenneth Reitz
 # SQL Alchemy
-# Chron Job to run every 6 hours
+
 # Making an update
+# If I want to make updates to git, VCS -> Commit, VCS-> Push
+
+# 6 * * * * /Users/billymarsden/PycharmProjects/twitch_data_analysis/program.py
+
+# /Users/billymarsden/PycharmProjects/twitch_data_analysis/program.py
+
+# To run cron, edit in crontab with 'crontab-e', i, edit the text, and then Esc, ':wq'
+# Errors encountered with cron not running same version of python as interpreter in Pycharm
+# Fixed with PYTHONPATH=/Library/Frameworks/Python.framework/Versions/3.8/bin/python3 /Users/billymarsden/PycharmProjects/twitch_data_analysis/program.py

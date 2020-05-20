@@ -15,15 +15,14 @@ class TwitchData:
         # client_secret = 'wgtnu7zkeetu7x9nxi9h6efmlkgzk4'
         return headers
 
-    def get_top_games_json(self, base_url="https://api.twitch.tv/kraken"):
+    def get_top_games_list(self, base_url="https://api.twitch.tv/kraken"):
         url = base_url + '/games/top'
         response = requests.get(url, headers=self.get_headers())
         # text_response = response.text
-        return response.json()
-
-    def create_ranking_list(self, json):
+        json = response.json()
         now = datetime.now()
-        ranking = [((json['top'][i]['game']['name']), i + 1,
+        ranking = [((json['top'][i]['game']['name']),
+                    i + 1,
                     (json['top'][i]['viewers']),
                     (json['top'][i]['channels']),
                     now.strftime("%m/%d/%Y %H:%M:%S")) for i in range(10)]
@@ -35,7 +34,7 @@ class Database:
         self.dbname = dbname
         self.user = user
 
-    def insert_game_data(self, game_list):
+    def insert_top_games_list(self, game_list):
         conn = psycopg2.connect(dbname=self.dbname, user=self.user)
         cur = conn.cursor()
 
@@ -58,9 +57,10 @@ class Database:
         conn.close()
 
 
-games_data = TwitchData(client_id='7zilk1vqpgww0f2nwsgm5gmwhmgnar')
+twitch_client = TwitchData(client_id='7zilk1vqpgww0f2nwsgm5gmwhmgnar')
 db = Database(dbname="gaming_analytics", user="postgres")
-db.insert_game_data(games_data.create_ranking_list(games_data.get_top_games_json()))
+db.insert_top_games_list(twitch_client.get_top_games_list())
+# db.insert_top_games_list(twitch_client.create_ranking_list(twitch_client.get_top_games_list()))
 
 # Records by Kenneth Reitz
 # SQL Alchemy
@@ -68,8 +68,8 @@ db.insert_game_data(games_data.create_ranking_list(games_data.get_top_games_json
 # Making an update
 # If I want to make updates to git, VCS -> Commit, VCS-> Push
 
+# Chron Job Info
 # 6 * * * * /Users/billymarsden/PycharmProjects/twitch_data_analysis/program.py
-
 # /Users/billymarsden/PycharmProjects/twitch_data_analysis/program.py
 
 # To run cron, edit in crontab with 'crontab-e', i, edit the text, and then Esc, ':wq'
